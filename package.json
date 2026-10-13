@@ -1,0 +1,22 @@
+{
+  "name": "stageterrain",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "StageTerrain — application d'enquête de l'école de terrain ESTLC (besoins en stagiaires de 100 entreprises)",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "vite build",
+    "preview": "vite preview --host"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.117.3",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "write-excel-file": "^4.1.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^6.1.2",
+    "vite": "^8.3.4"
+  }
+}
