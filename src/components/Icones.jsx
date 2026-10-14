@@ -24,3 +24,9 @@ export const IcSync = () => (
 export const IcCheck = () => (
   <svg {...base} width="14" height="14" strokeWidth="3"><path d="M5 12l5 5 9-10" /></svg>
 )
+export const IcOeil = () => (
+  <svg {...base} width="22" height="22"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></svg>
+)
+export const IcOeilBarre = () => (
+  <svg {...base} width="22" height="22"><path d="M10.6 5.1A10.8 10.8 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-2.6 3.5M6.6 6.6C3.7 8.4 2 12 2 12s3.6 7 10 7c1.9 0 3.6-.6 5-1.5M9.9 9.9a3 3 0 0 0 4.2 4.2M3 3l18 18" /></svg>
+)

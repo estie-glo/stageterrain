@@ -74,4 +74,16 @@ export function suggestionsFor(secteur) {
   return [...(SUGGESTIONS[secteur] || []), ...COMMUNS]
 }
 
+// Indicatifs téléphoniques proposés dans le formulaire (Cameroun par défaut)
+export const PAYS = [
+  { code: '+237', drapeau: '🇨🇲', nom: 'Cameroun', chiffres: 9, exemple: '6 77 12 34 56' },
+  { code: '+241', drapeau: '🇬🇦', nom: 'Gabon', chiffres: 8, exemple: '06 12 34 56' },
+  { code: '+240', drapeau: '🇬🇶', nom: 'Guinée équatoriale', chiffres: 9, exemple: '222 12 34 56' },
+  { code: '+242', drapeau: '🇨🇬', nom: 'Congo', chiffres: 9, exemple: '06 123 45 67' },
+  { code: '+235', drapeau: '🇹🇩', nom: 'Tchad', chiffres: 8, exemple: '66 12 34 56' },
+  { code: '+236', drapeau: '🇨🇫', nom: 'Centrafrique', chiffres: 8, exemple: '70 12 34 56' },
+  { code: '+234', drapeau: '🇳🇬', nom: 'Nigeria', chiffres: 10, exemple: '803 123 4567' },
+  { code: '+33', drapeau: '🇫🇷', nom: 'France', chiffres: 9, exemple: '6 12 34 56 78' },
+]
+
 export const labelOf = (list, value) => list.find((x) => x.value === value)?.label || value || '—'

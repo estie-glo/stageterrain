@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { isDemo, signIn, signUp } from '../lib/api'
+import { IcOeil, IcOeilBarre } from '../components/Icones'
 
 export default function Connexion({ onConnecte }) {
   const [mode, setMode] = useState('connexion')
@@ -9,6 +10,7 @@ export default function Connexion({ onConnecte }) {
   const [erreur, setErreur] = useState('')
   const [info, setInfo] = useState('')
   const [chargement, setChargement] = useState(false)
+  const [voir, setVoir] = useState(false)
 
   async function valider(e) {
     e.preventDefault()
@@ -63,7 +65,12 @@ export default function Connexion({ onConnecte }) {
             </div>
             <div className="champ">
               <label htmlFor="mdp">Mot de passe</label>
-              <input id="mdp" type="password" required minLength={6} value={mdp} onChange={(e) => setMdp(e.target.value)} autoComplete={mode === 'connexion' ? 'current-password' : 'new-password'} />
+              <div className="mdp-groupe">
+                <input id="mdp" type={voir ? 'text' : 'password'} required minLength={6} value={mdp} onChange={(e) => setMdp(e.target.value)} autoComplete={mode === 'connexion' ? 'current-password' : 'new-password'} />
+                <button type="button" className="oeil" onClick={() => setVoir(!voir)} aria-label={voir ? 'Masquer le mot de passe' : 'Afficher le mot de passe'} aria-pressed={voir}>
+                  {voir ? <IcOeilBarre /> : <IcOeil />}
+                </button>
+              </div>
               {mode === 'inscription' && <div className="aide">6 caractères minimum.</div>}
             </div>
           </>

@@ -210,3 +210,18 @@ textarea { min-height: 84px; resize: vertical; }
 @keyframes monte { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
 
 .alerte-doublon { background: var(--ocre-clair); color: #7a4a12; border-radius: 10px; padding: 9px 12px; font-size: 13px; margin-top: 8px; }
+
+/* ---------- téléphone avec indicatif ---------- */
+.tel-groupe { display: flex; gap: 8px; }
+.tel-groupe select { width: auto; flex-shrink: 0; padding-right: 8px; }
+.tel-groupe input { flex: 1; min-width: 0; }
+
+/* ---------- mot de passe avec œil ---------- */
+.mdp-groupe { position: relative; }
+.mdp-groupe input { padding-right: 48px; }
+.oeil {
+  position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+  background: none; border: 0; padding: 8px; cursor: pointer; color: var(--gris);
+  display: grid; place-items: center; border-radius: 8px;
+}
+.oeil:hover, .oeil[aria-pressed='true'] { color: var(--vert); }

@@ -37,7 +37,9 @@ export default function Fiche({ entretien: e, user, onRetour, onChange, notifier
     }
   }
 
-  const tel = (e.contact_tel || '').replace(/\s+/g, '')
+  // Numéro au format international : les anciens numéros sans indicatif sont considérés comme camerounais
+  const brut = (e.contact_tel || '').trim()
+  const tel = brut ? (brut.startsWith('+') ? '+' + brut.replace(/\D/g, '') : '+237' + brut.replace(/\D/g, '')) : ''
 
   return (
     <>
@@ -54,7 +56,7 @@ export default function Fiche({ entretien: e, user, onRetour, onChange, notifier
             <dt>Localisation</dt><dd>{[e.quartier, e.ville].filter(Boolean).join(', ') || '—'}</dd>
             <dt>Personne rencontrée</dt><dd>{[e.contact_nom, e.contact_poste].filter(Boolean).join(' — ') || '—'}</dd>
             <dt>Téléphone</dt>
-            <dd>{tel ? <><a href={`tel:${tel}`}>{e.contact_tel}</a> · <a href={`https://wa.me/${tel.replace(/^\+?(237)?/, '237')}`} target="_blank" rel="noreferrer">WhatsApp</a></> : '—'}</dd>
+            <dd>{tel ? <><a href={`tel:${tel}`}>{e.contact_tel}</a> · <a href={`https://wa.me/${tel.slice(1)}`} target="_blank" rel="noreferrer">WhatsApp</a></> : '—'}</dd>
           </dl>
         </section>
 
