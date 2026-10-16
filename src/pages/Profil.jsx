@@ -44,7 +44,15 @@ export default function Profil({ user, attente, enLigne, onSync, donnees }) {
           </p>
         </section>
 
-        <button className="btn danger" onClick={() => signOut().then(() => window.location.reload())}>Se déconnecter</button>
+        <button
+          className="btn danger"
+          onClick={() => {
+            if (attente > 0 && !window.confirm(`Attention : ${attente} entretien(s) ne sont pas encore envoyés. Si vous vous déconnectez, ils risquent d'être perdus. Se déconnecter quand même ?`)) return
+            signOut().then(() => window.location.reload())
+          }}
+        >
+          Se déconnecter
+        </button>
         <p className="muted petit centre">StageTerrain · École de terrain ESTLC Ambam</p>
       </main>
     </>

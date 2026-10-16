@@ -37,21 +37,32 @@ function Barres({ items, total, ocre }) {
 
 export default function Tableau({ donnees, user, onNouveau, notifier }) {
   const [export_, setExport] = useState(false)
-  const total = donnees.length
-  const besoinOui = donnees.filter((d) => d.besoin_stagiaires === 'oui').length
-  const interesses = donnees.filter((d) => d.interet === 'interesse').length
-  const places = donnees.filter((d) => d.besoin_stagiaires === 'oui').reduce((s, d) => s + (Number(d.nombre_stagiaires) || 0), 0)
-  const mesEntretiens = donnees.filter((d) => d.enqueteur_id === user.id).length
+  // Chaque étudiant a son propre objectif de 100 entreprises : par défaut on affiche « Moi »
+  const [vue, setVue] = useState(() => {
+    try { return localStorage.getItem('st_vue') || 'moi' } catch { return 'moi' }
+  })
+  const choisirVue = (v) => {
+    setVue(v)
+    try { localStorage.setItem('st_vue', v) } catch { /* ignore */ }
+  }
 
-  const secteurs = compter(donnees.map((d) => d.secteur))
-  const filieres = compter(donnees.filter((d) => d.besoin_stagiaires !== 'non').flatMap((d) => d.filieres || []))
+  const miens = donnees.filter((d) => d.enqueteur_id === user.id)
+  const base = vue === 'moi' ? miens : donnees
+  const total = base.length
+  const besoinOui = base.filter((d) => d.besoin_stagiaires === 'oui').length
+  const interesses = base.filter((d) => d.interet === 'interesse').length
+  const places = base.filter((d) => d.besoin_stagiaires === 'oui').reduce((s, d) => s + (Number(d.nombre_stagiaires) || 0), 0)
+
+  const secteurs = compter(base.map((d) => d.secteur))
+  const filieres = compter(base.filter((d) => d.besoin_stagiaires !== 'non').flatMap((d) => d.filieres || []))
     .sort((a, b) => b[1] - a[1] || FILIERES.indexOf(a[0]) - FILIERES.indexOf(b[0]))
-  const enqueteurs = compter(donnees.map((d) => d.enqueteur_nom)).slice(0, 10)
+  const enqueteurs = compter(donnees.map((d) => d.enqueteur_nom))
+  const atteints = enqueteurs.filter(([, n]) => n >= OBJECTIF).length
 
   async function exporter() {
     setExport(true)
     try {
-      await exporterExcel(donnees)
+      await exporterExcel(base)
     } catch {
       notifier("L'export a échoué")
     } finally {
@@ -62,18 +73,32 @@ export default function Tableau({ donnees, user, onNouveau, notifier }) {
   return (
     <>
       <header className="topbar">
-        <h1>Bonjour {user.nom.split(' ')[0]}<span className="sous">École de terrain · objectif {OBJECTIF} entreprises</span></h1>
+        <h1>Bonjour {user.nom.split(' ')[0]}<span className="sous">École de terrain · objectif {OBJECTIF} entreprises par étudiant</span></h1>
       </header>
       <main className="contenu">
         {isDemo && <div className="bandeau demo">Mode démo : les données restent sur ce téléphone.</div>}
 
-        <section className="hero">
-          <Anneau valeur={total} max={OBJECTIF} />
-          <div>
-            <div className="gros">{total}<small> / {OBJECTIF}</small></div>
-            <p>entreprises interrogées · dont {mesEntretiens} par vous</p>
-          </div>
-        </section>
+        <div className="segment" style={{ marginBottom: 14 }}>
+          <button className={vue === 'moi' ? 'on' : ''} onClick={() => choisirVue('moi')}>Mes entreprises</button>
+          <button className={vue === 'classe' ? 'on' : ''} onClick={() => choisirVue('classe')}>Toute la classe</button>
+        </div>
+
+        {vue === 'moi' ? (
+          <section className="hero">
+            <Anneau valeur={total} max={OBJECTIF} />
+            <div>
+              <div className="gros">{total}<small> / {OBJECTIF}</small></div>
+              <p>entreprises interrogées par vous{total >= OBJECTIF ? ' · objectif atteint 🎉' : ` · encore ${OBJECTIF - total}`}</p>
+            </div>
+          </section>
+        ) : (
+          <section className="hero">
+            <div>
+              <div className="gros">{total}</div>
+              <p>entreprises interrogées par {enqueteurs.length} enquêteur(s) · {atteints} ont atteint {OBJECTIF}</p>
+            </div>
+          </section>
+        )}
 
         <div className="stats">
           <div className="stat"><b>{besoinOui}</b><span>veulent des stagiaires</span></div>
@@ -83,7 +108,7 @@ export default function Tableau({ donnees, user, onNouveau, notifier }) {
 
         {total === 0 ? (
           <div className="carte centre">
-            <p className="muted" style={{ marginTop: 0 }}>Aucun entretien pour l'instant.</p>
+            <p className="muted" style={{ marginTop: 0 }}>{vue === 'moi' ? "Vous n'avez encore interrogé aucune entreprise." : "Aucun entretien pour l'instant."}</p>
             <button className="btn ocre" onClick={onNouveau}>Faire le premier entretien</button>
           </div>
         ) : (
@@ -96,16 +121,18 @@ export default function Tableau({ donnees, user, onNouveau, notifier }) {
               <h2>Entreprises par secteur</h2>
               <Barres items={secteurs} total={total} ocre />
             </section>
-            <section className="carte">
-              <h2>Classement des enquêteurs</h2>
-              <ol className="classement">
-                {enqueteurs.map(([nom, n], i) => (
-                  <li key={nom}><span className="rang">{i + 1}</span><span className="espace">{nom}</span><b>{n}</b></li>
-                ))}
-              </ol>
-            </section>
+            {vue === 'classe' && (
+              <section className="carte">
+                <h2>Avancement des enquêteurs</h2>
+                <ol className="classement">
+                  {enqueteurs.map(([nom, n], i) => (
+                    <li key={nom}><span className="rang">{i + 1}</span><span className="espace">{nom}</span><b>{n}</b><span className="muted petit"> / {OBJECTIF}</span></li>
+                  ))}
+                </ol>
+              </section>
+            )}
             <button className="btn secondaire" onClick={exporter} disabled={export_}>
-              <IcTelecharger /> {export_ ? 'Préparation…' : 'Exporter en Excel'}
+              <IcTelecharger /> {export_ ? 'Préparation…' : vue === 'moi' ? 'Exporter mes entreprises (Excel)' : 'Exporter toute la classe (Excel)'}
             </button>
           </>
         )}

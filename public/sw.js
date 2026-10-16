@@ -1,10 +1,24 @@
-// Service worker StageTerrain : garde l'interface disponible hors ligne.
+// Service worker StageTerrain : garde l'application utilisable sans réseau.
+// À l'installation, il télécharge la page ET tous les fichiers qu'elle utilise
+// (JavaScript, CSS, icônes) pour pouvoir les servir plus tard hors ligne.
 // Les données (entretiens) ne passent pas par ici : elles sont mises en file
 // d'attente dans le navigateur puis envoyées à Supabase au retour du réseau.
-const CACHE = 'stageterrain-v1'
+const CACHE = 'stageterrain-v2'
+const BASE = ['/', '/index.html', '/manifest.webmanifest', '/icon.svg', '/icon-192.png', '/icon-512.png']
+
+async function toutMettreEnCache() {
+  const cache = await caches.open(CACHE)
+  const rep = await fetch('/index.html', { cache: 'reload' })
+  const html = await rep.clone().text()
+  // Récupère tous les fichiers /assets/... cités dans la page (noms générés par Vite)
+  const assets = [...html.matchAll(/(?:src|href)="(\/assets\/[^"]+)"/g)].map((m) => m[1])
+  await cache.put('/index.html', rep.clone())
+  await cache.put('/', rep)
+  await cache.addAll([...new Set([...BASE.filter((u) => u !== '/' && u !== '/index.html'), ...assets])])
+}
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE).then((c) => c.addAll(['/', '/index.html', '/manifest.webmanifest', '/icon.svg'])))
+  event.waitUntil(toutMettreEnCache())
   self.skipWaiting()
 })
 
@@ -21,20 +35,32 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(req.url)
   if (url.origin !== self.location.origin) return // Supabase : jamais mis en cache
 
-  // Navigation : réseau d'abord, sinon la page en cache
+  // Ouverture de l'application : réseau d'abord (pour avoir la dernière version),
+  // sinon la page gardée en cache
   if (req.mode === 'navigate') {
-    event.respondWith(fetch(req).catch(() => caches.match('/index.html')))
+    event.respondWith(
+      fetch(req)
+        .then((res) => {
+          if (res.ok) {
+            const copie = res.clone()
+            caches.open(CACHE).then((c) => c.put('/index.html', copie))
+          }
+          return res
+        })
+        .catch(() => caches.match('/index.html'))
+    )
     return
   }
-  // Fichiers statiques : cache d'abord, puis réseau (et on garde une copie)
+
+  // Fichiers (JS, CSS, images) : cache d'abord, sinon réseau (et on garde une copie)
   event.respondWith(
     caches.match(req).then(
-      (hit) =>
-        hit ||
+      (trouve) =>
+        trouve ||
         fetch(req).then((res) => {
           if (res.ok) {
-            const copy = res.clone()
-            caches.open(CACHE).then((c) => c.put(req, copy))
+            const copie = res.clone()
+            caches.open(CACHE).then((c) => c.put(req, copie))
           }
           return res
         })

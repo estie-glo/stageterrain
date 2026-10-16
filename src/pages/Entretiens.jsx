@@ -16,7 +16,14 @@ const FILTRES = [
   { id: 'a_rappeler', label: 'À rappeler' },
 ]
 
-export default function Entretiens({ donnees, onOuvrir, onRafraichir }) {
+export default function Entretiens({ donnees, user, onOuvrir, onRafraichir }) {
+  const [vue, setVue] = useState(() => {
+    try { return localStorage.getItem('st_vue') || 'moi' } catch { return 'moi' }
+  })
+  const choisirVue = (v) => {
+    setVue(v)
+    try { localStorage.setItem('st_vue', v) } catch { /* ignore */ }
+  }
   const [q, setQ] = useState('')
   const [filtre, setFiltre] = useState('tous')
   const [secteur, setSecteur] = useState('')
@@ -25,13 +32,14 @@ export default function Entretiens({ donnees, onOuvrir, onRafraichir }) {
   const liste = useMemo(() => {
     const nq = normaliser(q)
     return donnees.filter((d) => {
+      if (vue === 'moi' && d.enqueteur_id !== user.id) return false
       if (filtre === 'besoin' && d.besoin_stagiaires !== 'oui') return false
       if ((filtre === 'interesse' || filtre === 'a_rappeler') && d.interet !== filtre) return false
       if (secteur && d.secteur !== secteur) return false
       if (nq && !normaliser([d.entreprise_nom, d.quartier, d.ville, d.enqueteur_nom].join(' ')).includes(nq)) return false
       return true
     })
-  }, [donnees, q, filtre, secteur])
+  }, [donnees, q, filtre, secteur, vue, user.id])
 
   async function rafraichir() {
     setCharge(true)
@@ -42,11 +50,15 @@ export default function Entretiens({ donnees, onOuvrir, onRafraichir }) {
   return (
     <>
       <header className="topbar">
-        <h1>Entretiens<span className="sous">{donnees.length} entreprise(s) au total</span></h1>
+        <h1>Entretiens<span className="sous">{vue === 'moi' ? `${donnees.filter((d) => d.enqueteur_id === user.id).length} entreprise(s) interrogée(s) par vous` : `${donnees.length} entreprise(s) pour toute la classe`}</span></h1>
         <button className="btn petit secondaire" onClick={rafraichir} disabled={charge} aria-label="Actualiser"><IcSync /></button>
       </header>
       <main className="contenu">
         <div className="recherche">
+          <div className="segment" style={{ marginBottom: 10 }}>
+            <button className={vue === 'moi' ? 'on' : ''} onClick={() => choisirVue('moi')}>Mes entreprises</button>
+            <button className={vue === 'classe' ? 'on' : ''} onClick={() => choisirVue('classe')}>Toute la classe</button>
+          </div>
           <input type="search" placeholder="Rechercher une entreprise, un quartier…" value={q} onChange={(e) => setQ(e.target.value)} />
           <div className="filtres">
             {FILTRES.map((x) => (

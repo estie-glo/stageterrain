@@ -17,6 +17,7 @@ const K_QUEUE = 'st_queue'
 const K_CACHE = 'st_cache'
 const K_DEMO_USER = 'st_demo_user'
 const K_DEMO_DATA = 'st_demo_data'
+const K_USER = 'st_user' // dernier utilisateur connecté, pour ouvrir l'appli sans réseau
 
 // ---------- stockage local tolérant aux erreurs ----------
 function load(key, fallback) {
@@ -43,8 +44,20 @@ export function newId() {
 // ---------- authentification ----------
 export async function getUser() {
   if (isDemo) return load(K_DEMO_USER, null)
-  const { data } = await supabase.auth.getSession()
-  return toUser(data.session?.user)
+  try {
+    const { data } = await supabase.auth.getSession()
+    const user = toUser(data.session?.user)
+    if (user) {
+      save(K_USER, user)
+      return user
+    }
+  } catch {
+    /* pas de réseau : on tente l'utilisateur gardé ci-dessous */
+  }
+  // Sans réseau, Supabase ne peut pas renouveler la connexion (elle expire au bout d'1 h) :
+  // on garde la personne connectée grâce au dernier utilisateur mémorisé.
+  // La vraie session reste dans le navigateur et sera renouvelée au retour du réseau.
+  return navigator.onLine ? null : load(K_USER, null)
 }
 
 function toUser(u) {
@@ -54,7 +67,20 @@ function toUser(u) {
 
 export function onAuthChange(cb) {
   if (isDemo) return () => {}
-  const { data } = supabase.auth.onAuthStateChange((_e, session) => cb(toUser(session?.user)))
+  const { data } = supabase.auth.onAuthStateChange((event, session) => {
+    const user = toUser(session?.user)
+    if (user) {
+      save(K_USER, user)
+      cb(user)
+    } else if (event === 'SIGNED_OUT') {
+      localStorage.removeItem(K_USER)
+      cb(null)
+    } else if (!navigator.onLine && load(K_USER, null)) {
+      cb(load(K_USER, null)) // hors ligne : on reste connecté
+    } else {
+      cb(null)
+    }
+  })
   return () => data.subscription.unsubscribe()
 }
 
@@ -66,6 +92,7 @@ export async function signIn(email, password, nomDemo) {
   }
   const { data, error } = await supabase.auth.signInWithPassword({ email, password })
   if (error) throw new Error(traduire(error.message))
+  save(K_USER, toUser(data.user))
   return toUser(data.user)
 }
 
@@ -83,6 +110,7 @@ export async function signOut() {
     localStorage.removeItem(K_DEMO_USER)
     return
   }
+  localStorage.removeItem(K_USER)
   await supabase.auth.signOut()
 }
 

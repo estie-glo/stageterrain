@@ -70,7 +70,7 @@ export default function App() {
   } else if (onglet === 'accueil') {
     page = <Tableau donnees={tous} user={user} onNouveau={() => aller('nouveau')} notifier={notifier} />
   } else if (onglet === 'liste') {
-    page = <Entretiens donnees={tous} onOuvrir={setFiche} onRafraichir={rafraichir} />
+    page = <Entretiens donnees={tous} user={user} onOuvrir={setFiche} onRafraichir={rafraichir} />
   } else if (onglet === 'nouveau') {
     page = (
       <Nouveau
