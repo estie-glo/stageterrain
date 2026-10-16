@@ -34,10 +34,8 @@ export default function Nouveau({ user, existants, onTermine, onAnnuler }) {
   const doublon = useMemo(() => {
     const n = normaliser(f.entreprise_nom)
     if (n.length < 3) return null
-    const memes = existants.filter((e) => normaliser(e.entreprise_nom) === n)
-    // priorité à mes propres entretiens : chaque étudiant doit avoir 100 entreprises différentes
-    return memes.find((e) => e.enqueteur_id === user.id) || memes[0] || null
-  }, [f.entreprise_nom, existants, user.id])
+    return existants.find((e) => normaliser(e.entreprise_nom) === n) || null
+  }, [f.entreprise_nom, existants])
 
   const pays = PAYS.find((p) => p.code === f.indicatif) || PAYS[0]
   const suggestions = suggestionsFor(f.secteur)
@@ -126,16 +124,12 @@ export default function Nouveau({ user, existants, onTermine, onAnnuler }) {
             <div className="champ">
               <label htmlFor="nom">Nom de l'entreprise <span className="requis">*</span></label>
               <input id="nom" type="text" value={f.entreprise_nom} onChange={(e) => maj('entreprise_nom', e.target.value)} placeholder="Ex. Boutique Mama Ngono" />
-              {doublon && (doublon.enqueteur_id === user.id ? (
+              {doublon && (
                 <div className="alerte-doublon">
-                  <b>Vous avez déjà interrogé cette entreprise</b>
-                  {doublon.created_at ? ` le ${new Date(doublon.created_at).toLocaleDateString('fr-FR')}` : ''}. Ne l'enregistrez pas une deuxième fois.
+                  Déjà interrogée par <b>{doublon.enqueteur_nom || 'un camarade'}</b>
+                  {doublon.created_at ? ` le ${new Date(doublon.created_at).toLocaleDateString('fr-FR')}` : ''}. Vérifiez avant de continuer.
                 </div>
-              ) : (
-                <div className="alerte-doublon" style={{ background: 'var(--vert-clair)', color: 'var(--vert-fonce)' }}>
-                  Déjà interrogée par <b>{doublon.enqueteur_nom || 'un camarade'}</b>. Vous pouvez quand même l'interroger pour vos propres 100 entreprises.
-                </div>
-              ))}
+              )}
             </div>
             <div className="champ">
               <label htmlFor="secteur">Secteur d'activité <span className="requis">*</span></label>
