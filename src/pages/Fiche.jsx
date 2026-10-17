@@ -49,6 +49,7 @@ export default function Fiche({ entretien: e, user, onRetour, onChange, notifier
       </header>
       <main className="contenu" style={{ paddingBottom: 40 }}>
         {e._attente && <div className="bandeau attente">Cet entretien attend le réseau pour être envoyé.</div>}
+        {e.responsable_id && <div className="bandeau ok">Fiche remplie par le responsable de l'entreprise lui-même, à partir du lien de {e.enqueteur_nom}.</div>}
 
         <section className="carte fiche">
           <div className="ligne-flex"><b className="espace">Entreprise</b><BadgeInteret e={e} /></div>
@@ -75,7 +76,7 @@ export default function Fiche({ entretien: e, user, onRetour, onChange, notifier
         </section>
 
         <section className="carte fiche">
-          <b>Services proposés</b>
+          <b>{e.responsable_id ? 'Services qui intéressent l’entreprise' : 'Services proposés'}</b>
           {(e.services_proposes || []).length ? (
             <ul style={{ margin: '10px 0 0', paddingLeft: 20, lineHeight: 1.6 }}>
               {e.services_proposes.map((s) => <li key={s}>{s}</li>)}

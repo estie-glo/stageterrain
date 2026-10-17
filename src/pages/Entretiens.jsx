@@ -81,7 +81,7 @@ export default function Entretiens({ donnees, user, onOuvrir, onRafraichir }) {
                 <div className="nom">{e.entreprise_nom}</div>
                 <div className="meta">
                   {e.secteur}{e.quartier ? ` · ${e.quartier}` : ''}<br />
-                  {e.enqueteur_nom}{e.created_at ? ` · ${new Date(e.created_at).toLocaleDateString('fr-FR')}` : ''}
+                  {e.responsable_id ? 'Remplie par l’entreprise' : e.enqueteur_nom}{e.responsable_id && vue === 'classe' ? ` · pour ${e.enqueteur_nom}` : ''}{e.created_at ? ` · ${new Date(e.created_at).toLocaleDateString('fr-FR')}` : ''}
                 </div>
               </span>
               <BadgeInteret e={e} />

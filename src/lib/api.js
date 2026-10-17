@@ -18,6 +18,7 @@ const K_CACHE = 'st_cache'
 const K_DEMO_USER = 'st_demo_user'
 const K_DEMO_DATA = 'st_demo_data'
 const K_USER = 'st_user' // dernier utilisateur connecté, pour ouvrir l'appli sans réseau
+const K_REF = 'st_ref' // lien d'invitation d'un étudiant (?ref=...&n=...)
 
 // ---------- stockage local tolérant aux erreurs ----------
 function load(key, fallback) {
@@ -62,7 +63,41 @@ export async function getUser() {
 
 function toUser(u) {
   if (!u) return null
-  return { id: u.id, email: u.email, nom: u.user_metadata?.nom || u.email }
+  const m = u.user_metadata || {}
+  return {
+    id: u.id,
+    email: u.email,
+    nom: m.nom || u.email,
+    // deux profils : l'étudiant enquêteur, ou le responsable d'entreprise invité par un étudiant
+    role: m.role === 'responsable' ? 'responsable' : 'etudiant',
+    ref: m.ref || null, // étudiant qui a invité le responsable
+    ref_nom: m.ref_nom || null,
+  }
+}
+
+// ---------- lien d'invitation ----------
+// Un étudiant partage https://.../?ref=<son id>&n=<son nom>.
+// Le responsable qui ouvre ce lien crée un compte « responsable » rattaché à cet étudiant.
+export function lireInvitation() {
+  try {
+    const q = new URLSearchParams(window.location.search)
+    const ref = q.get('ref')
+    if (ref) {
+      const inv = { ref, ref_nom: q.get('n') || 'un étudiant' }
+      save(K_REF, inv)
+      window.history.replaceState(null, '', window.location.pathname)
+      return inv
+    }
+  } catch { /* ignore */ }
+  return load(K_REF, null)
+}
+
+export function oublierInvitation() {
+  try { localStorage.removeItem(K_REF) } catch { /* ignore */ }
+}
+
+export function lienInvitation(user) {
+  return `${window.location.origin}/?ref=${encodeURIComponent(user.id)}&n=${encodeURIComponent(user.nom)}`
 }
 
 export function onAuthChange(cb) {
@@ -84,9 +119,11 @@ export function onAuthChange(cb) {
   return () => data.subscription.unsubscribe()
 }
 
-export async function signIn(email, password, nomDemo) {
+export async function signIn(email, password, nomDemo, extra = {}) {
   if (isDemo) {
-    const user = { id: 'demo-' + (nomDemo || 'enqueteur').toLowerCase().replace(/\s+/g, '-'), nom: nomDemo || 'Enquêteur démo' }
+    const resp = extra.role === 'responsable'
+    const slug = (nomDemo || 'enqueteur').toLowerCase().replace(/\s+/g, '-')
+    const user = { id: (resp ? 'resp-' : 'demo-') + slug, nom: nomDemo || 'Enquêteur démo', role: resp ? 'responsable' : 'etudiant', ref: extra.ref || null, ref_nom: extra.ref_nom || null }
     save(K_DEMO_USER, user)
     return user
   }
@@ -96,8 +133,8 @@ export async function signIn(email, password, nomDemo) {
   return toUser(data.user)
 }
 
-export async function signUp(nom, email, password) {
-  const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { nom } } })
+export async function signUp(nom, email, password, extra = {}) {
+  const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { nom, ...extra } } })
   if (error) throw new Error(traduire(error.message))
   if (!data.session) {
     throw new Error('Compte créé. Confirmez votre adresse e-mail (lien reçu par mail), puis connectez-vous.')
@@ -124,8 +161,12 @@ function traduire(msg) {
 }
 
 // ---------- entretiens ----------
-export async function listEntretiens() {
-  if (isDemo) return load(K_DEMO_DATA, [])
+export async function listEntretiens(user) {
+  if (isDemo) {
+    const all = load(K_DEMO_DATA, [])
+    // en démo on reproduit la règle de sécurité : un responsable ne voit que sa propre fiche
+    return user?.role === 'responsable' ? all.filter((r) => r.responsable_id === user.id) : all
+  }
   try {
     const { data, error } = await supabase.from(TABLE).select('*').order('created_at', { ascending: false })
     if (error) throw error
@@ -137,11 +178,14 @@ export async function listEntretiens() {
 }
 
 export async function createEntretien(user, row) {
+  const resp = user.role === 'responsable'
   const entry = {
     ...row,
     client_id: row.client_id || newId(),
-    enqueteur_id: user.id,
-    enqueteur_nom: user.nom,
+    // une fiche remplie par un responsable compte dans les 100 de l'étudiant qui l'a invité
+    enqueteur_id: resp ? user.ref : user.id,
+    enqueteur_nom: resp ? user.ref_nom : user.nom,
+    responsable_id: resp ? user.id : null,
     created_at: new Date().toISOString(),
   }
   if (isDemo) {
@@ -185,9 +229,15 @@ export async function deleteEntretien(id) {
 
 async function push(entry) {
   // upsert sur client_id : un renvoi après coupure ne crée jamais de doublon
-  // eslint-disable-next-line no-unused-vars
-  const { enqueteur_id, ...rest } = entry
-  const { error } = await supabase.from(TABLE).upsert(rest, { onConflict: 'client_id', ignoreDuplicates: true })
+  // Fiche d'étudiant : enqueteur_id est rempli par la base (auth.uid()), on ne l'envoie pas.
+  // Fiche de responsable : on envoie enqueteur_id (l'étudiant qui a invité) et responsable_id.
+  let envoi = entry
+  if (!entry.responsable_id) {
+    // eslint-disable-next-line no-unused-vars
+    const { enqueteur_id, responsable_id, ...rest } = entry
+    envoi = rest
+  }
+  const { error } = await supabase.from(TABLE).upsert(envoi, { onConflict: 'client_id', ignoreDuplicates: true })
   if (error) throw error
 }
 

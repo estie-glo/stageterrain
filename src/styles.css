@@ -225,3 +225,5 @@ textarea { min-height: 84px; resize: vertical; }
   display: grid; place-items: center; border-radius: 8px;
 }
 .oeil:hover, .oeil[aria-pressed='true'] { color: var(--vert); }
+
+a.btn { text-decoration: none; }

@@ -1,9 +1,11 @@
 import { useState } from 'react'
-import { isDemo, signIn, signUp } from '../lib/api'
+import { isDemo, oublierInvitation, signIn, signUp } from '../lib/api'
 import { IcOeil, IcOeilBarre } from '../components/Icones'
 
-export default function Connexion({ onConnecte }) {
-  const [mode, setMode] = useState('connexion')
+export default function Connexion({ onConnecte, invitation }) {
+  // Lien d'invitation d'un étudiant : la personne est un responsable d'entreprise
+  const extra = invitation ? { role: 'responsable', ref: invitation.ref, ref_nom: invitation.ref_nom } : {}
+  const [mode, setMode] = useState(invitation ? 'inscription' : 'connexion')
   const [nom, setNom] = useState('')
   const [email, setEmail] = useState('')
   const [mdp, setMdp] = useState('')
@@ -18,9 +20,9 @@ export default function Connexion({ onConnecte }) {
     setInfo('')
     setChargement(true)
     try {
-      if (isDemo) onConnecte(await signIn(null, null, nom.trim()))
+      if (isDemo) onConnecte(await signIn(null, null, nom.trim(), extra))
       else if (mode === 'connexion') onConnecte(await signIn(email.trim(), mdp))
-      else onConnecte(await signUp(nom.trim(), email.trim(), mdp))
+      else onConnecte(await signUp(nom.trim(), email.trim(), mdp, extra))
     } catch (err) {
       if (/Compte créé/.test(err.message)) { setInfo(err.message); setMode('connexion') }
       else setErreur(err.message)
@@ -33,7 +35,14 @@ export default function Connexion({ onConnecte }) {
     <div className="accueil-login">
       <img className="logo" src="/icon.svg" alt="" />
       <h1>StageTerrain</h1>
-      <p className="intro">École de terrain ESTLC<br />Enquête sur les besoins en stagiaires des entreprises</p>
+      {invitation ? (
+        <p className="intro">
+          <b>{invitation.ref_nom}</b>, étudiant(e) à l'ESTLC Ambam, vous invite à remplir la fiche de votre entreprise :
+          vos besoins en stagiaires et les services qui vous intéressent. Cela prend environ 2 minutes.
+        </p>
+      ) : (
+        <p className="intro">École de terrain ESTLC<br />Enquête sur les besoins en stagiaires des entreprises</p>
+      )}
 
       {isDemo && (
         <div className="bandeau demo">
@@ -47,14 +56,14 @@ export default function Connexion({ onConnecte }) {
         {!isDemo && (
           <div className="segment" style={{ marginBottom: 16 }}>
             <button type="button" className={mode === 'connexion' ? 'on' : ''} onClick={() => setMode('connexion')}>Se connecter</button>
-            <button type="button" className={mode === 'inscription' ? 'on' : ''} onClick={() => setMode('inscription')}>Créer un compte</button>
+            <button type="button" className={mode === 'inscription' ? 'on' : ''} onClick={() => setMode('inscription')}>{invitation ? 'Créer mon compte' : 'Créer un compte'}</button>
           </div>
         )}
 
         {(isDemo || mode === 'inscription') && (
           <div className="champ">
-            <label htmlFor="nom">Nom et prénom</label>
-            <input id="nom" type="text" required value={nom} onChange={(e) => setNom(e.target.value)} autoComplete="name" placeholder="Ex. Wandji Estelle" />
+            <label htmlFor="nom">{invitation ? 'Votre nom et prénom' : 'Nom et prénom'}</label>
+            <input id="nom" type="text" required value={nom} onChange={(e) => setNom(e.target.value)} autoComplete="name" placeholder={invitation ? 'Ex. Ngono Marie' : 'Ex. Wandji Estelle'} />
           </div>
         )}
         {!isDemo && (
@@ -79,6 +88,12 @@ export default function Connexion({ onConnecte }) {
           {chargement ? 'Patientez…' : isDemo ? 'Commencer' : mode === 'connexion' ? 'Se connecter' : 'Créer mon compte'}
         </button>
       </form>
+      {invitation && (
+        <p className="muted petit centre">
+          Vous êtes étudiant(e) ?{' '}
+          <button className="lien" onClick={() => { oublierInvitation(); window.location.reload() }}>Accéder à l'espace étudiant</button>
+        </p>
+      )}
     </div>
   )
 }

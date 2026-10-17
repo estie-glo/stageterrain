@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
-import { flushQueue, getQueue, getUser, listEntretiens, onAuthChange } from './lib/api'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { flushQueue, getQueue, getUser, lireInvitation, listEntretiens, onAuthChange, oublierInvitation } from './lib/api'
 import { IcAccueil, IcIdees, IcListe, IcPlus, IcProfil } from './components/Icones'
 import Connexion from './pages/Connexion'
 import Tableau from './pages/Tableau'
@@ -8,6 +8,9 @@ import Nouveau from './pages/Nouveau'
 import Fiche from './pages/Fiche'
 import Idees from './pages/Idees'
 import Profil from './pages/Profil'
+import EspaceResponsable from './pages/EspaceResponsable'
+
+const invitation = lireInvitation() // lien ?ref=... ouvert par un responsable d'entreprise
 
 const ONGLETS = [
   { id: 'accueil', label: 'Accueil', Icone: IcAccueil },
@@ -26,6 +29,9 @@ export default function App() {
   const [toast, setToast] = useState('')
   const [enLigne, setEnLigne] = useState(navigator.onLine)
 
+  const userRef = useRef(null)
+  userRef.current = user
+
   const notifier = useCallback((msg) => {
     setToast(msg)
     setTimeout(() => setToast(''), 2800)
@@ -35,7 +41,7 @@ export default function App() {
     const sent = await flushQueue()
     if (sent) notifier(`${sent} entretien(s) en attente envoyé(s)`)
     setAttente(getQueue())
-    setDonnees(await listEntretiens())
+    setDonnees(await listEntretiens(userRef.current))
   }, [notifier])
 
   useEffect(() => {
@@ -44,7 +50,10 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    if (user) rafraichir()
+    if (user) {
+      oublierInvitation() // une fois connecté, le lien d'invitation a servi : le téléphone redevient normal
+      rafraichir()
+    }
   }, [user, rafraichir])
 
   useEffect(() => {
@@ -56,7 +65,17 @@ export default function App() {
   }, [rafraichir])
 
   if (user === undefined) return <div className="app"><div className="vide">Chargement…</div></div>
-  if (!user) return <div className="app"><Connexion onConnecte={setUser} /></div>
+  if (!user) return <div className="app"><Connexion onConnecte={setUser} invitation={invitation} /></div>
+
+  if (user.role === 'responsable') {
+    const maFiche = [...attente.map((e) => ({ ...e, id: e.client_id, _attente: true })), ...donnees].find((d) => d.responsable_id === user.id) || null
+    return (
+      <div className="app">
+        <EspaceResponsable user={user} fiche={maFiche} onChange={rafraichir} notifier={notifier} />
+        {toast && <div className="toast" role="status">{toast}</div>}
+      </div>
+    )
+  }
 
   // les entretiens en attente apparaissent aussi dans la liste et les stats
   const enAttente = attente.map((e) => ({ ...e, id: e.client_id, _attente: true }))

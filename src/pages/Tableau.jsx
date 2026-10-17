@@ -3,6 +3,7 @@ import { FILIERES, OBJECTIF } from '../lib/constants'
 import { isDemo } from '../lib/api'
 import { exporterExcel } from '../lib/export'
 import { IcTelecharger } from '../components/Icones'
+import LienInvitation from '../components/LienInvitation'
 
 function compter(liste) {
   const m = new Map()
@@ -99,6 +100,8 @@ export default function Tableau({ donnees, user, onNouveau, notifier }) {
             </div>
           </section>
         )}
+
+        {vue === 'moi' && <LienInvitation user={user} notifier={notifier} />}
 
         <div className="stats">
           <div className="stat"><b>{besoinOui}</b><span>veulent des stagiaires</span></div>

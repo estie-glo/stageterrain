@@ -18,6 +18,7 @@ const COLONNES = [
   ['Intérêt', (r) => labelOf(INTERETS, r.interet), 14],
   ['Notes', (r) => r.notes, 40],
   ['Enquêteur', (r) => r.enqueteur_nom, 20],
+  ['Remplie par', (r) => (r.responsable_id ? "L'entreprise" : "L'étudiant"), 14],
 ]
 
 export async function exporterExcel(rows) {
