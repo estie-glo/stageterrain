@@ -20,13 +20,8 @@ const FILTRES = [
 ]
 
 export default function Entretiens({ donnees, user, onOuvrir, onRafraichir }) {
-  const [vue, setVue] = useState(() => {
-    try { return localStorage.getItem('st_vue') || 'moi' } catch { return 'moi' }
-  })
-  const choisirVue = (v) => {
-    setVue(v)
-    try { localStorage.setItem('st_vue', v) } catch { /* ignore */ }
-  }
+  // Confidentialité : chaque étudiant ne voit que ses propres fiches (règle de la base)
+  const vue = 'moi'
   const [q, setQ] = useState('')
   const [filtre, setFiltre] = useState('tous')
   const [secteur, setSecteur] = useState('')
@@ -60,10 +55,6 @@ export default function Entretiens({ donnees, user, onOuvrir, onRafraichir }) {
       </header>
       <main className="contenu">
         <div className="recherche">
-          <div className="segment" style={{ marginBottom: 10 }}>
-            <button className={vue === 'moi' ? 'on' : ''} onClick={() => choisirVue('moi')}>Mes entreprises</button>
-            <button className={vue === 'classe' ? 'on' : ''} onClick={() => choisirVue('classe')}>Toute la classe</button>
-          </div>
           <input type="search" placeholder="Rechercher une entreprise, un quartier…" value={q} onChange={(e) => setQ(e.target.value)} />
           <div className="filtres">
             {FILTRES.map((x) => (

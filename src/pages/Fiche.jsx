@@ -4,6 +4,7 @@ import { deleteEntretien } from '../lib/api'
 import { CHAMPS_POSTE, COMPETENCES, ENTETE, FILIERES_ESTLC, RUBRIQUES } from '../lib/questionnaire'
 import { ligneMetier, niveau, texte, vide } from '../lib/reponses'
 import { BadgeInteret } from './Entretiens'
+import FicheImprimable from '../components/FicheImprimable'
 
 // Une réponse (question + valeur), seulement si elle est renseignée
 function Ligne({ q, r }) {
@@ -137,12 +138,8 @@ export default function Fiche({ entretien: e, user, onRetour, onChange, onModifi
         <h1>{e.entreprise_nom}<span className="sous">{e.secteur}</span></h1>
       </header>
       <main className="contenu fiche-page" style={{ paddingBottom: 40 }}>
-        <div className="imprimer-seul entete-officielle">
-          <div>UNIVERSITÉ D’EBOLOWA — ÉCOLE SUPÉRIEURE DE TRANSPORT, DE LOGISTIQUE ET DE COMMERCE (ESTLC) — BP 22 AMBAM</div>
-          <h2>ÉCOLE DE TERRAIN – DU 19 AU 25 OCTOBRE 2026</h2>
-          <p>Fiche détaillée de collecte des données sur le marché de l’emploi, les besoins en recrutement et les profils professionnels recherchés</p>
-        </div>
-
+        <div className="imprimer-seul"><FicheImprimable e={e} /></div>
+        <div className="ecran-seul">
         {e._attente && <div className="bandeau attente">Cette fiche attend le réseau pour être envoyée.</div>}
         {e.responsable_id && <div className="bandeau ok">Fiche remplie par le responsable de la structure lui-même, à partir du lien de {e.enqueteur_nom}.</div>}
 
@@ -150,18 +147,10 @@ export default function Fiche({ entretien: e, user, onRetour, onChange, onModifi
           <BadgeInteret e={e} />
           {tel && <a className="btn petit secondaire" href={`tel:${tel}`}>Appeler</a>}
           {tel && <a className="btn petit secondaire" href={`https://wa.me/${tel.slice(1)}`} target="_blank" rel="noreferrer">WhatsApp</a>}
-          <button className="btn petit secondaire" onClick={() => window.print()}>Imprimer / PDF</button>
+          <button className="btn petit secondaire" onClick={() => window.print()}>Télécharger la fiche (PDF)</button>
         </div>
 
         {e.reponses ? <FicheOfficielle e={e} /> : <FicheAncienne e={e} tel={tel} />}
-
-        <section className="carte imprimer-seul signatures">
-          <p>Engagement de l’enquêteur : je certifie avoir renseigné la présente fiche à partir des informations effectivement recueillies et m’engage à signaler toute donnée non vérifiée, estimée ou indisponible.</p>
-          <div className="ligne-flex">
-            <div className="espace">Nom et signature de l’étudiant :<br /><br />{e.enqueteur_nom}<br /><br />Date :</div>
-            <div className="espace">Nom et signature (éventuellement cachet) d’un responsable de la structure :<br /><br /><br /><br />Date :</div>
-          </div>
-        </section>
 
         <p className="muted petit ecran-seul">
           {e.responsable_id ? 'Envoyée' : 'Enregistrée'} pour {e.enqueteur_nom}{e.created_at ? ` le ${new Date(e.created_at).toLocaleString('fr-FR', { dateStyle: 'long', timeStyle: 'short' })}` : ''}
@@ -173,6 +162,7 @@ export default function Fiche({ entretien: e, user, onRetour, onChange, onModifi
             <button className="btn danger" style={{ marginTop: 10 }} onClick={supprimer} disabled={busy}>Supprimer cette fiche</button>
           </div>
         )}
+        </div>
       </main>
     </>
   )

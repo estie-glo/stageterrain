@@ -9,6 +9,7 @@ import Fiche from './pages/Fiche'
 import Idees from './pages/Idees'
 import Profil from './pages/Profil'
 import EspaceResponsable from './pages/EspaceResponsable'
+import ImpressionLot from './pages/ImpressionLot'
 
 const invitation = lireInvitation() // lien ?ref=... ouvert par un responsable d'entreprise
 
@@ -27,6 +28,7 @@ export default function App() {
   const [attente, setAttente] = useState(getQueue())
   const [fiche, setFiche] = useState(null)
   const [edition, setEdition] = useState(null) // fiche ouverte dans le formulaire pour être complétée
+  const [impression, setImpression] = useState(null) // fiches à enregistrer en PDF
   const [toast, setToast] = useState('')
   const [enLigne, setEnLigne] = useState(navigator.onLine)
 
@@ -82,10 +84,12 @@ export default function App() {
   const enAttente = attente.map((e) => ({ ...e, id: e.client_id, _attente: true }))
   const tous = [...enAttente, ...donnees.filter((d) => !attente.some((a) => a.client_id === d.client_id))]
 
-  const aller = (id) => { setFiche(null); setEdition(null); setOnglet(id); window.scrollTo(0, 0) }
+  const aller = (id) => { setFiche(null); setEdition(null); setImpression(null); setOnglet(id); window.scrollTo(0, 0) }
 
   let page
-  if (edition) {
+  if (impression) {
+    page = <ImpressionLot liste={impression} onRetour={() => setImpression(null)} />
+  } else if (edition) {
     page = (
       <Nouveau
         user={user}
@@ -103,7 +107,7 @@ export default function App() {
   } else if (fiche) {
     page = <Fiche entretien={fiche} user={user} onRetour={() => setFiche(null)} onModifier={(e) => { setEdition(e); window.scrollTo(0, 0) }} onChange={async () => { await rafraichir(); setFiche(null) }} notifier={notifier} />
   } else if (onglet === 'accueil') {
-    page = <Tableau donnees={tous} user={user} onNouveau={() => aller('nouveau')} notifier={notifier} />
+    page = <Tableau donnees={tous} user={user} onNouveau={() => aller('nouveau')} onImprimer={(l) => { setImpression(l); window.scrollTo(0, 0) }} notifier={notifier} />
   } else if (onglet === 'liste') {
     page = <Entretiens donnees={tous} user={user} onOuvrir={setFiche} onRafraichir={rafraichir} />
   } else if (onglet === 'nouveau') {
@@ -128,7 +132,7 @@ export default function App() {
   return (
     <div className="app">
       {page}
-      {!fiche && !edition && onglet !== 'nouveau' && (
+      {!fiche && !edition && !impression && onglet !== 'nouveau' && (
         <nav className="nav">
           {ONGLETS.map(({ id, label, Icone, plus }) => (
             <button key={id} className={(plus ? 'plus ' : '') + (onglet === id ? 'actif' : '')} onClick={() => aller(id)} aria-label={label}>

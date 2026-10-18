@@ -38,16 +38,11 @@ function Barres({ items, total, ocre }) {
   ))
 }
 
-export default function Tableau({ donnees, user, onNouveau, notifier }) {
+export default function Tableau({ donnees, user, onNouveau, onImprimer, notifier }) {
   const [export_, setExport] = useState(false)
   // Chaque étudiant a son propre objectif de 100 entreprises : par défaut on affiche « Moi »
-  const [vue, setVue] = useState(() => {
-    try { return localStorage.getItem('st_vue') || 'moi' } catch { return 'moi' }
-  })
-  const choisirVue = (v) => {
-    setVue(v)
-    try { localStorage.setItem('st_vue', v) } catch { /* ignore */ }
-  }
+  // Confidentialité : chaque étudiant ne voit que ses propres fiches (règle de la base)
+  const vue = 'moi'
 
   const miens = donnees.filter((d) => d.enqueteur_id === user.id)
   const base = vue === 'moi' ? miens : donnees
@@ -87,11 +82,6 @@ export default function Tableau({ donnees, user, onNouveau, notifier }) {
       </header>
       <main className="contenu">
         {isDemo && <div className="bandeau demo">Mode démo : les données restent sur ce téléphone.</div>}
-
-        <div className="segment" style={{ marginBottom: 14 }}>
-          <button className={vue === 'moi' ? 'on' : ''} onClick={() => choisirVue('moi')}>Mes entreprises</button>
-          <button className={vue === 'classe' ? 'on' : ''} onClick={() => choisirVue('classe')}>Toute la classe</button>
-        </div>
 
         {vue === 'moi' ? (
           <section className="hero">
@@ -149,6 +139,9 @@ export default function Tableau({ donnees, user, onNouveau, notifier }) {
             )}
             <button className="btn secondaire" onClick={exporter} disabled={export_}>
               <IcTelecharger /> {export_ ? 'Préparation…' : vue === 'moi' ? 'Exporter mes fiches (Excel)' : 'Exporter toute la classe (Excel)'}
+            </button>
+            <button className="btn secondaire" style={{ marginTop: 10 }} onClick={() => onImprimer(base)}>
+              <IcTelecharger /> {vue === 'moi' ? `Télécharger mes ${total} fiches (PDF officiel)` : `Télécharger les ${total} fiches de la classe (PDF)`}
             </button>
           </>
         )}
