@@ -14,7 +14,7 @@ export default function LienInvitation({ user, notifier }) {
     QRCode.toDataURL(lien, { width: 480, margin: 1, color: { dark: '#0f5c4d' } }).then(setQr).catch(() => {})
   }, [voirQr, qr, lien])
 
-  const message = `Bonjour, je suis ${user.nom}, étudiant(e) à l'ESTLC Ambam. Pour mon enquête sur les besoins en stagiaires des entreprises, pouvez-vous remplir la fiche de votre entreprise ici (2 minutes) : ${lien}`
+  const message = `Bonjour, je suis ${user.nom}, étudiant(e) ingénieur à l'ESTLC Ambam. Dans le cadre de l'école de terrain de l'ESTLC (19 au 25 octobre 2026) sur le marché de l'emploi, pouvez-vous remplir la fiche de votre structure (postes à pourvoir, profils et compétences recherchés, stages) ici : ${lien}`
 
   async function copier() {
     try {
@@ -29,7 +29,7 @@ export default function LienInvitation({ user, notifier }) {
     <section className="carte">
       <h2>Mon lien pour les entreprises</h2>
       <p className="petit muted" style={{ marginTop: -4 }}>
-        Envoyez-le au responsable : il crée son compte et remplit lui-même la fiche de son entreprise. Elle compte dans vos 100.
+        Envoyez-le au responsable : il crée son compte et remplit lui-même la fiche officielle de sa structure. Elle compte dans vos 100.
       </p>
       <div className="ligne-flex" style={{ gap: 8, flexWrap: 'wrap' }}>
         <a className="btn petit" href={`https://wa.me/?text=${encodeURIComponent(message)}`} target="_blank" rel="noreferrer">Envoyer par WhatsApp</a>

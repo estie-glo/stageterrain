@@ -1,35 +1,124 @@
 import { useState } from 'react'
-import { BESOINS, INTERETS, labelOf } from '../lib/constants'
-import { deleteEntretien, updateEntretien } from '../lib/api'
+import { BESOINS, labelOf } from '../lib/constants'
+import { deleteEntretien } from '../lib/api'
+import { CHAMPS_POSTE, COMPETENCES, ENTETE, FILIERES_ESTLC, RUBRIQUES } from '../lib/questionnaire'
+import { ligneMetier, niveau, texte, vide } from '../lib/reponses'
 import { BadgeInteret } from './Entretiens'
 
-export default function Fiche({ entretien: e, user, onRetour, onChange, notifier }) {
-  const [interet, setInteret] = useState(e.interet)
-  const [notes, setNotes] = useState(e.notes || '')
+// Une réponse (question + valeur), seulement si elle est renseignée
+function Ligne({ q, r }) {
+  if (q.titre) return null
+  if (q.type === 'grille') {
+    const v = r[q.id] || {}
+    const l = COMPETENCES.map((c, i) => (v[i] ? [c, niveau(v[i])] : null)).filter(Boolean)
+    if (v.autre) l.push(['Autre', v.autre])
+    if (!l.length) return null
+    return (
+      <>
+        <dt>{q.n}. Importance des compétences</dt>
+        <dd><ul className="liste-rep">{l.map(([c, n]) => <li key={c}>{c} : <b>{n}</b></li>)}</ul></dd>
+      </>
+    )
+  }
+  if (q.type === 'metiers') {
+    const l = (r[q.id] || []).filter((m) => m?.metier)
+    if (!l.length) return null
+    return (
+      <>
+        <dt>{q.n}. Principaux métiers ou fonctions recherchés</dt>
+        <dd><ol className="liste-rep">{l.map((m, i) => <li key={i}>{ligneMetier(m)}</li>)}</ol></dd>
+      </>
+    )
+  }
+  if (q.type === 'filieres') {
+    const v = r[q.id] || {}
+    const l = FILIERES_ESTLC.filter((f) => v[f.code]?.rep)
+    if (!l.length) return null
+    return (
+      <>
+        <dt>{q.n}. Filières de l’ESTLC correspondant aux besoins</dt>
+        <dd><ul className="liste-rep">{l.map((f) => <li key={f.code}>{f.nom} : <b>{v[f.code].rep}</b>{v[f.code].metiers ? ` — ${v[f.code].metiers}` : ''}</li>)}</ul></dd>
+      </>
+    )
+  }
+  if (q.type === 'postes') return null
+  const t = texte(q, r)
+  if (!t) return null
+  return (
+    <>
+      <dt>{q.n ? `${q.n}. ` : ''}{q.label}</dt>
+      <dd style={{ whiteSpace: 'pre-wrap' }}>{t}</dd>
+    </>
+  )
+}
+
+function Postes({ postes }) {
+  if (!postes?.length) return <p className="muted petit">Aucun poste recensé.</p>
+  return postes.map((p, i) => (
+    <div className="sous-carte" key={i}>
+      <b>Poste {i + 1}{p.p29 ? ` — ${p.p29}` : ''}</b>
+      <dl>{CHAMPS_POSTE.filter((c) => c.id !== 'p29').map((c) => <Ligne key={c.id} q={c} r={p} />)}</dl>
+    </div>
+  ))
+}
+
+function FicheOfficielle({ e }) {
+  const r = e.reponses
+  return (
+    <>
+      <section className="carte fiche officielle">
+        <b>{ENTETE.titre}</b>
+        <dl>
+          <dt>Enquêteur</dt><dd>{e.enqueteur_nom} · Niveau 4{r.filiere_enqueteur ? ` · ${r.filiere_enqueteur}` : ''}</dd>
+          {ENTETE.questions.filter((q) => q.id !== 'filiere_enqueteur').map((q) => <Ligne key={q.id} q={q} r={r} />)}
+        </dl>
+      </section>
+      {RUBRIQUES.map((rub) => {
+        const remplies = rub.questions.filter((q) => q.id && !vide(r[q.id]))
+        if (rub.id !== 'III' && !remplies.length) return null
+        return (
+          <section className="carte fiche officielle" key={rub.id}>
+            <b>Rubrique {rub.id} — {rub.titre}</b>
+            {rub.id === 'III' ? <Postes postes={r.postes} /> : <dl>{rub.questions.map((q, i) => <Ligne key={q.id || i} q={q} r={r} />)}</dl>}
+          </section>
+        )
+      })}
+    </>
+  )
+}
+
+function FicheAncienne({ e, tel }) {
+  return (
+    <>
+      <div className="bandeau attente">Fiche remplie avec l’ancien formulaire (avant la fiche officielle). Utilisez « Compléter la fiche » pour ajouter les rubriques manquantes.</div>
+      <section className="carte fiche">
+        <b>Entreprise</b>
+        <dl>
+          <dt>Secteur</dt><dd>{e.secteur}</dd>
+          <dt>Localisation</dt><dd>{[e.quartier, e.ville].filter(Boolean).join(', ') || '—'}</dd>
+          <dt>Personne rencontrée</dt><dd>{[e.contact_nom, e.contact_poste].filter(Boolean).join(' — ') || '—'}</dd>
+          <dt>Téléphone</dt><dd>{tel || '—'}</dd>
+          <dt>Besoin en stagiaires</dt><dd>{labelOf(BESOINS, e.besoin_stagiaires)}{(e.filieres || []).length ? ` — ${e.filieres.join(', ')}` : ''}{e.nombre_stagiaires ? ` (${e.nombre_stagiaires})` : ''}</dd>
+          <dt>Services</dt><dd>{(e.services_proposes || []).join(' ; ') || '—'}</dd>
+          {e.notes && <><dt>Notes</dt><dd style={{ whiteSpace: 'pre-wrap' }}>{e.notes}</dd></>}
+        </dl>
+      </section>
+    </>
+  )
+}
+
+export default function Fiche({ entretien: e, user, onRetour, onChange, onModifier, notifier }) {
   const [busy, setBusy] = useState(false)
   // seul l'auteur peut modifier (la base le vérifie aussi grâce aux règles RLS)
-  const auteur = e.enqueteur_id === user.id
+  const auteur = e.enqueteur_id === user.id || e.responsable_id === user.id
   const modifiable = auteur && !e._attente
-  const modifie = interet !== e.interet || notes !== (e.notes || '')
-
-  async function sauver() {
-    setBusy(true)
-    try {
-      await updateEntretien(e.id, { interet, notes: notes.trim() || null })
-      notifier('Fiche mise à jour')
-      await onChange()
-    } catch (err) {
-      notifier(err.message)
-      setBusy(false)
-    }
-  }
 
   async function supprimer() {
-    if (!window.confirm(`Supprimer l'entretien avec « ${e.entreprise_nom} » ?`)) return
+    if (!window.confirm(`Supprimer la fiche de « ${e.entreprise_nom} » ?`)) return
     setBusy(true)
     try {
       await deleteEntretien(e.id)
-      notifier('Entretien supprimé')
+      notifier('Fiche supprimée')
       await onChange()
     } catch (err) {
       notifier(err.message)
@@ -47,64 +136,43 @@ export default function Fiche({ entretien: e, user, onRetour, onChange, notifier
         <button className="retour" onClick={onRetour} aria-label="Retour">‹</button>
         <h1>{e.entreprise_nom}<span className="sous">{e.secteur}</span></h1>
       </header>
-      <main className="contenu" style={{ paddingBottom: 40 }}>
-        {e._attente && <div className="bandeau attente">Cet entretien attend le réseau pour être envoyé.</div>}
-        {e.responsable_id && <div className="bandeau ok">Fiche remplie par le responsable de l'entreprise lui-même, à partir du lien de {e.enqueteur_nom}.</div>}
+      <main className="contenu fiche-page" style={{ paddingBottom: 40 }}>
+        <div className="imprimer-seul entete-officielle">
+          <div>UNIVERSITÉ D’EBOLOWA — ÉCOLE SUPÉRIEURE DE TRANSPORT, DE LOGISTIQUE ET DE COMMERCE (ESTLC) — BP 22 AMBAM</div>
+          <h2>ÉCOLE DE TERRAIN – DU 19 AU 25 OCTOBRE 2026</h2>
+          <p>Fiche détaillée de collecte des données sur le marché de l’emploi, les besoins en recrutement et les profils professionnels recherchés</p>
+        </div>
 
-        <section className="carte fiche">
-          <div className="ligne-flex"><b className="espace">Entreprise</b><BadgeInteret e={e} /></div>
-          <dl>
-            <dt>Localisation</dt><dd>{[e.quartier, e.ville].filter(Boolean).join(', ') || '—'}</dd>
-            <dt>Personne rencontrée</dt><dd>{[e.contact_nom, e.contact_poste].filter(Boolean).join(' — ') || '—'}</dd>
-            <dt>Téléphone</dt>
-            <dd>{tel ? <><a href={`tel:${tel}`}>{e.contact_tel}</a> · <a href={`https://wa.me/${tel.slice(1)}`} target="_blank" rel="noreferrer">WhatsApp</a></> : '—'}</dd>
-          </dl>
+        {e._attente && <div className="bandeau attente">Cette fiche attend le réseau pour être envoyée.</div>}
+        {e.responsable_id && <div className="bandeau ok">Fiche remplie par le responsable de la structure lui-même, à partir du lien de {e.enqueteur_nom}.</div>}
+
+        <div className="ligne-flex ecran-seul" style={{ gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+          <BadgeInteret e={e} />
+          {tel && <a className="btn petit secondaire" href={`tel:${tel}`}>Appeler</a>}
+          {tel && <a className="btn petit secondaire" href={`https://wa.me/${tel.slice(1)}`} target="_blank" rel="noreferrer">WhatsApp</a>}
+          <button className="btn petit secondaire" onClick={() => window.print()}>Imprimer / PDF</button>
+        </div>
+
+        {e.reponses ? <FicheOfficielle e={e} /> : <FicheAncienne e={e} tel={tel} />}
+
+        <section className="carte imprimer-seul signatures">
+          <p>Engagement de l’enquêteur : je certifie avoir renseigné la présente fiche à partir des informations effectivement recueillies et m’engage à signaler toute donnée non vérifiée, estimée ou indisponible.</p>
+          <div className="ligne-flex">
+            <div className="espace">Nom et signature de l’étudiant :<br /><br />{e.enqueteur_nom}<br /><br />Date :</div>
+            <div className="espace">Nom et signature (éventuellement cachet) d’un responsable de la structure :<br /><br /><br /><br />Date :</div>
+          </div>
         </section>
 
-        <section className="carte fiche">
-          <b>Besoin en stagiaires</b>
-          <dl>
-            <dt>Réponse</dt><dd>{labelOf(BESOINS, e.besoin_stagiaires)}</dd>
-            {e.besoin_stagiaires !== 'non' && (
-              <>
-                <dt>Profils</dt><dd>{(e.filieres || []).join(', ') || '—'}</dd>
-                <dt>Nombre</dt><dd>{e.nombre_stagiaires ?? '—'}</dd>
-                <dt>Période</dt><dd>{e.periode || '—'}</dd>
-              </>
-            )}
-          </dl>
-        </section>
+        <p className="muted petit ecran-seul">
+          {e.responsable_id ? 'Envoyée' : 'Enregistrée'} pour {e.enqueteur_nom}{e.created_at ? ` le ${new Date(e.created_at).toLocaleString('fr-FR', { dateStyle: 'long', timeStyle: 'short' })}` : ''}
+        </p>
 
-        <section className="carte fiche">
-          <b>{e.responsable_id ? 'Services qui intéressent l’entreprise' : 'Services proposés'}</b>
-          {(e.services_proposes || []).length ? (
-            <ul style={{ margin: '10px 0 0', paddingLeft: 20, lineHeight: 1.6 }}>
-              {e.services_proposes.map((s) => <li key={s}>{s}</li>)}
-            </ul>
-          ) : <p className="muted petit">Aucun.</p>}
-        </section>
-
-        <section className="carte">
-          <h2>Suivi</h2>
-          {modifiable ? (
-            <>
-              <div className="segment" style={{ marginBottom: 12 }}>
-                {INTERETS.map((b) => (
-                  <button key={b.value} className={interet === b.value ? 'on' : ''} onClick={() => setInteret(b.value)}>{b.label}</button>
-                ))}
-              </div>
-              <textarea value={notes} onChange={(ev) => setNotes(ev.target.value)} placeholder="Notes" />
-              {modifie && <button className="btn" style={{ marginTop: 10 }} onClick={sauver} disabled={busy}>Enregistrer les modifications</button>}
-            </>
-          ) : (
-            <p className="petit" style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{e.notes || <span className="muted">Pas de notes.</span>}</p>
-          )}
-          <p className="muted petit" style={{ marginBottom: 0 }}>
-            Interrogée par {e.enqueteur_nom}{e.created_at ? ` le ${new Date(e.created_at).toLocaleString('fr-FR', { dateStyle: 'long', timeStyle: 'short' })}` : ''}
-          </p>
-        </section>
-
-        {modifiable && <button className="btn danger" onClick={supprimer} disabled={busy}>Supprimer cet entretien</button>}
+        {modifiable && (
+          <div className="ecran-seul">
+            <button className="btn" onClick={() => onModifier(e)} disabled={busy}>{e.reponses ? 'Modifier / compléter la fiche' : 'Compléter la fiche officielle'}</button>
+            <button className="btn danger" style={{ marginTop: 10 }} onClick={supprimer} disabled={busy}>Supprimer cette fiche</button>
+          </div>
+        )}
       </main>
     </>
   )

@@ -14,9 +14,9 @@ const invitation = lireInvitation() // lien ?ref=... ouvert par un responsable d
 
 const ONGLETS = [
   { id: 'accueil', label: 'Accueil', Icone: IcAccueil },
-  { id: 'liste', label: 'Entretiens', Icone: IcListe },
+  { id: 'liste', label: 'Fiches', Icone: IcListe },
   { id: 'nouveau', label: 'Nouveau', Icone: IcPlus, plus: true },
-  { id: 'idees', label: 'Idées', Icone: IcIdees },
+  { id: 'idees', label: 'Guide', Icone: IcIdees },
   { id: 'profil', label: 'Profil', Icone: IcProfil },
 ]
 
@@ -26,6 +26,7 @@ export default function App() {
   const [donnees, setDonnees] = useState([])
   const [attente, setAttente] = useState(getQueue())
   const [fiche, setFiche] = useState(null)
+  const [edition, setEdition] = useState(null) // fiche ouverte dans le formulaire pour être complétée
   const [toast, setToast] = useState('')
   const [enLigne, setEnLigne] = useState(navigator.onLine)
 
@@ -39,7 +40,7 @@ export default function App() {
 
   const rafraichir = useCallback(async () => {
     const sent = await flushQueue()
-    if (sent) notifier(`${sent} entretien(s) en attente envoyé(s)`)
+    if (sent) notifier(`${sent} fiche(s) en attente envoyée(s)`)
     setAttente(getQueue())
     setDonnees(await listEntretiens(userRef.current))
   }, [notifier])
@@ -81,11 +82,26 @@ export default function App() {
   const enAttente = attente.map((e) => ({ ...e, id: e.client_id, _attente: true }))
   const tous = [...enAttente, ...donnees.filter((d) => !attente.some((a) => a.client_id === d.client_id))]
 
-  const aller = (id) => { setFiche(null); setOnglet(id); window.scrollTo(0, 0) }
+  const aller = (id) => { setFiche(null); setEdition(null); setOnglet(id); window.scrollTo(0, 0) }
 
   let page
-  if (fiche) {
-    page = <Fiche entretien={fiche} user={user} onRetour={() => setFiche(null)} onChange={async () => { await rafraichir(); setFiche(null) }} notifier={notifier} />
+  if (edition) {
+    page = (
+      <Nouveau
+        user={user}
+        existants={tous}
+        initial={edition}
+        onTermine={async () => {
+          await rafraichir()
+          notifier('Fiche mise à jour ✓')
+          setEdition(null)
+          setFiche(null)
+        }}
+        onAnnuler={() => setEdition(null)}
+      />
+    )
+  } else if (fiche) {
+    page = <Fiche entretien={fiche} user={user} onRetour={() => setFiche(null)} onModifier={(e) => { setEdition(e); window.scrollTo(0, 0) }} onChange={async () => { await rafraichir(); setFiche(null) }} notifier={notifier} />
   } else if (onglet === 'accueil') {
     page = <Tableau donnees={tous} user={user} onNouveau={() => aller('nouveau')} notifier={notifier} />
   } else if (onglet === 'liste') {
@@ -97,7 +113,7 @@ export default function App() {
         existants={tous}
         onTermine={async (statut) => {
           await rafraichir()
-          notifier(statut === 'queued' ? 'Pas de réseau : entretien gardé, il sera envoyé plus tard' : 'Entretien enregistré ✓')
+          notifier(statut === 'queued' ? 'Pas de réseau : fiche gardée, elle sera envoyée plus tard' : 'Fiche enregistrée ✓')
           aller('liste')
         }}
         onAnnuler={() => aller('accueil')}
@@ -112,7 +128,7 @@ export default function App() {
   return (
     <div className="app">
       {page}
-      {!fiche && onglet !== 'nouveau' && (
+      {!fiche && !edition && onglet !== 'nouveau' && (
         <nav className="nav">
           {ONGLETS.map(({ id, label, Icone, plus }) => (
             <button key={id} className={(plus ? 'plus ' : '') + (onglet === id ? 'actif' : '')} onClick={() => aller(id)} aria-label={label}>

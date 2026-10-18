@@ -46,9 +46,9 @@ export const BESOINS = [
 ]
 
 export const INTERETS = [
-  { value: 'interesse', label: 'Intéressée', tone: 'good' },
-  { value: 'a_rappeler', label: 'À rappeler', tone: 'warn' },
-  { value: 'pas_interesse', label: 'Pas intéressée', tone: 'muted' },
+  { value: 'interesse', label: 'Besoins identifiés', tone: 'good' },
+  { value: 'a_rappeler', label: 'À recontacter', tone: 'warn' },
+  { value: 'pas_interesse', label: 'Sans besoin', tone: 'muted' },
 ]
 
 // Services qu'un stagiaire peut proposer, selon le secteur de l'entreprise.

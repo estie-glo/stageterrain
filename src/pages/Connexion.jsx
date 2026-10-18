@@ -37,11 +37,11 @@ export default function Connexion({ onConnecte, invitation }) {
       <h1>StageTerrain</h1>
       {invitation ? (
         <p className="intro">
-          <b>{invitation.ref_nom}</b>, étudiant(e) à l'ESTLC Ambam, vous invite à remplir la fiche de votre entreprise :
-          vos besoins en stagiaires et les services qui vous intéressent. Cela prend environ 2 minutes.
+          <b>{invitation.ref_nom}</b>, étudiant(e) à l'ESTLC Ambam, vous invite à remplir la fiche de l'école de terrain ESTLC (19–25 octobre 2026) pour votre structure :
+          postes à pourvoir, métiers et compétences recherchés, stages. Seules deux questions sont obligatoires : répondez à ce que vous pouvez.
         </p>
       ) : (
-        <p className="intro">École de terrain ESTLC<br />Enquête sur les besoins en stagiaires des entreprises</p>
+        <p className="intro">École de terrain ESTLC · 19–25 octobre 2026<br />Marché de l'emploi, besoins en recrutement et profils recherchés</p>
       )}
 
       {isDemo && (

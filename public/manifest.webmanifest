@@ -1,7 +1,7 @@
 {
   "name": "StageTerrain — École de terrain ESTLC",
   "short_name": "StageTerrain",
-  "description": "Enquête auprès des entreprises sur leurs besoins en stagiaires",
+  "description": "École de terrain ESTLC : marché de l’emploi, besoins en recrutement et profils recherchés",
   "lang": "fr",
   "start_url": "/",
   "scope": "/",

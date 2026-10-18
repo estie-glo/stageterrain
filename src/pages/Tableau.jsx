@@ -1,5 +1,7 @@
 import { useState } from 'react'
-import { FILIERES, OBJECTIF } from '../lib/constants'
+import { OBJECTIF } from '../lib/constants'
+import { FILIERES_ESTLC } from '../lib/questionnaire'
+import { nbPostes } from '../lib/reponses'
 import { isDemo } from '../lib/api'
 import { exporterExcel } from '../lib/export'
 import { IcTelecharger } from '../components/Icones'
@@ -50,13 +52,19 @@ export default function Tableau({ donnees, user, onNouveau, notifier }) {
   const miens = donnees.filter((d) => d.enqueteur_id === user.id)
   const base = vue === 'moi' ? miens : donnees
   const total = base.length
-  const besoinOui = base.filter((d) => d.besoin_stagiaires === 'oui').length
-  const interesses = base.filter((d) => d.interet === 'interesse').length
-  const places = base.filter((d) => d.besoin_stagiaires === 'oui').reduce((s, d) => s + (Number(d.nombre_stagiaires) || 0), 0)
+  const postes = base.reduce((s, d) => s + nbPostes(d.reponses), 0)
+  const recrutent = base.filter((d) => (d.reponses?.q25 || '').startsWith('Oui')).length
+  const stagiaires = base.filter((d) => d.besoin_stagiaires === 'oui').length
+  // métiers cités : intitulés des postes (rubrique III) et 5 principaux métiers (question 57)
+  const metiers = compter(base.flatMap((d) => [
+    ...(d.reponses?.postes || []).map((p) => p.p29),
+    ...(d.reponses?.q57 || []).map((m) => m?.metier),
+  ]).filter(Boolean).map((m) => m.trim().charAt(0).toUpperCase() + m.trim().slice(1).toLowerCase())).slice(0, 10)
 
   const secteurs = compter(base.map((d) => d.secteur))
-  const filieres = compter(base.filter((d) => d.besoin_stagiaires !== 'non').flatMap((d) => d.filieres || []))
-    .sort((a, b) => b[1] - a[1] || FILIERES.indexOf(a[0]) - FILIERES.indexOf(b[0]))
+  const codes = FILIERES_ESTLC.map((f) => f.code)
+  const filieres = compter(base.filter((d) => d.reponses).flatMap((d) => d.filieres || []))
+    .sort((a, b) => b[1] - a[1] || codes.indexOf(a[0]) - codes.indexOf(b[0]))
   const enqueteurs = compter(donnees.map((d) => d.enqueteur_nom))
   const atteints = enqueteurs.filter(([, n]) => n >= OBJECTIF).length
 
@@ -64,7 +72,8 @@ export default function Tableau({ donnees, user, onNouveau, notifier }) {
     setExport(true)
     try {
       await exporterExcel(base)
-    } catch {
+    } catch (e) {
+      console.error(e)
       notifier("L'export a échoué")
     } finally {
       setExport(false)
@@ -74,7 +83,7 @@ export default function Tableau({ donnees, user, onNouveau, notifier }) {
   return (
     <>
       <header className="topbar">
-        <h1>Bonjour {user.nom.split(' ')[0]}<span className="sous">École de terrain · objectif {OBJECTIF} entreprises par étudiant</span></h1>
+        <h1>Bonjour {user.nom.split(' ')[0]}<span className="sous">École de terrain 19–25 oct. · objectif {OBJECTIF} structures</span></h1>
       </header>
       <main className="contenu">
         {isDemo && <div className="bandeau demo">Mode démo : les données restent sur ce téléphone.</div>}
@@ -89,14 +98,14 @@ export default function Tableau({ donnees, user, onNouveau, notifier }) {
             <Anneau valeur={total} max={OBJECTIF} />
             <div>
               <div className="gros">{total}<small> / {OBJECTIF}</small></div>
-              <p>entreprises interrogées par vous{total >= OBJECTIF ? ' · objectif atteint 🎉' : ` · encore ${OBJECTIF - total}`}</p>
+              <p>structures enquêtées par vous{total >= OBJECTIF ? ' · objectif atteint 🎉' : ` · encore ${OBJECTIF - total}`}</p>
             </div>
           </section>
         ) : (
           <section className="hero">
             <div>
               <div className="gros">{total}</div>
-              <p>entreprises interrogées par {enqueteurs.length} enquêteur(s) · {atteints} ont atteint {OBJECTIF}</p>
+              <p>structures enquêtées par {enqueteurs.length} enquêteur(s) · {atteints} ont atteint {OBJECTIF}</p>
             </div>
           </section>
         )}
@@ -104,24 +113,28 @@ export default function Tableau({ donnees, user, onNouveau, notifier }) {
         {vue === 'moi' && <LienInvitation user={user} notifier={notifier} />}
 
         <div className="stats">
-          <div className="stat"><b>{besoinOui}</b><span>veulent des stagiaires</span></div>
-          <div className="stat"><b>{places}</b><span>places annoncées</span></div>
-          <div className="stat"><b>{interesses}</b><span>intéressées par nos services</span></div>
+          <div className="stat"><b>{postes}</b><span>postes à pourvoir recensés</span></div>
+          <div className="stat"><b>{recrutent}</b><span>prévoient de recruter</span></div>
+          <div className="stat"><b>{stagiaires}</b><span>accueillent des stagiaires</span></div>
         </div>
 
         {total === 0 ? (
           <div className="carte centre">
-            <p className="muted" style={{ marginTop: 0 }}>{vue === 'moi' ? "Vous n'avez encore interrogé aucune entreprise." : "Aucun entretien pour l'instant."}</p>
-            <button className="btn ocre" onClick={onNouveau}>Faire le premier entretien</button>
+            <p className="muted" style={{ marginTop: 0 }}>{vue === 'moi' ? "Vous n'avez encore enquêté aucune structure." : "Aucune fiche pour l'instant."}</p>
+            <button className="btn ocre" onClick={onNouveau}>Remplir la première fiche</button>
           </div>
         ) : (
           <>
             <section className="carte">
-              <h2>Filières les plus demandées</h2>
+              <h2>Métiers les plus recherchés</h2>
+              <Barres items={metiers} />
+            </section>
+            <section className="carte">
+              <h2>Filières ESTLC correspondant aux besoins</h2>
               <Barres items={filieres} />
             </section>
             <section className="carte">
-              <h2>Entreprises par secteur</h2>
+              <h2>Structures par secteur</h2>
               <Barres items={secteurs} total={total} ocre />
             </section>
             {vue === 'classe' && (
@@ -135,7 +148,7 @@ export default function Tableau({ donnees, user, onNouveau, notifier }) {
               </section>
             )}
             <button className="btn secondaire" onClick={exporter} disabled={export_}>
-              <IcTelecharger /> {export_ ? 'Préparation…' : vue === 'moi' ? 'Exporter mes entreprises (Excel)' : 'Exporter toute la classe (Excel)'}
+              <IcTelecharger /> {export_ ? 'Préparation…' : vue === 'moi' ? 'Exporter mes fiches (Excel)' : 'Exporter toute la classe (Excel)'}
             </button>
           </>
         )}

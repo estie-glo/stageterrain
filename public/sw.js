@@ -3,7 +3,7 @@
 // (JavaScript, CSS, icônes) pour pouvoir les servir plus tard hors ligne.
 // Les données (entretiens) ne passent pas par ici : elles sont mises en file
 // d'attente dans le navigateur puis envoyées à Supabase au retour du réseau.
-const CACHE = 'stageterrain-v2'
+const CACHE = 'stageterrain-v3'
 const BASE = ['/', '/index.html', '/manifest.webmanifest', '/icon.svg', '/icon-192.png', '/icon-512.png']
 
 async function toutMettreEnCache() {

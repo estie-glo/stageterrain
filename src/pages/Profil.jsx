@@ -22,14 +22,14 @@ export default function Profil({ user, attente, enLigne, onSync, donnees }) {
             <b>{user.nom}</b>
             <div className="muted petit">{isDemo ? 'Compte démo (local)' : user.email}</div>
           </div>
-          <div className="centre"><b style={{ fontSize: 22 }}>{miens}</b><div className="muted petit">entretiens</div></div>
+          <div className="centre"><b style={{ fontSize: 22 }}>{miens}</b><div className="muted petit">fiches</div></div>
         </section>
 
         <section className="carte">
           <h2>Connexion et envoi</h2>
           <p className="petit" style={{ marginTop: 0 }}>
             Réseau : <b style={{ color: enLigne ? 'var(--vert)' : 'var(--rouge)' }}>{enLigne ? 'connecté' : 'hors ligne'}</b><br />
-            En attente d'envoi : <b>{attente}</b> entretien(s)
+            En attente d'envoi : <b>{attente}</b> fiche(s)
           </p>
           <button className="btn secondaire" onClick={synchroniser} disabled={sync || isDemo}>
             <IcSync /> {sync ? 'Synchronisation…' : 'Synchroniser maintenant'}
@@ -47,7 +47,7 @@ export default function Profil({ user, attente, enLigne, onSync, donnees }) {
         <button
           className="btn danger"
           onClick={() => {
-            if (attente > 0 && !window.confirm(`Attention : ${attente} entretien(s) ne sont pas encore envoyés. Si vous vous déconnectez, ils risquent d'être perdus. Se déconnecter quand même ?`)) return
+            if (attente > 0 && !window.confirm(`Attention : ${attente} fiche(s) ne sont pas encore envoyées. Si vous vous déconnectez, ils risquent d'être perdus. Se déconnecter quand même ?`)) return
             signOut().then(() => window.location.reload())
           }}
         >

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { BESOINS, labelOf } from '../lib/constants'
+import { nbPostes } from '../lib/reponses'
 import { signOut } from '../lib/api'
 import Nouveau from './Nouveau'
 
@@ -8,6 +8,7 @@ import Nouveau from './Nouveau'
 export default function EspaceResponsable({ user, fiche, onChange, notifier }) {
   const [edition, setEdition] = useState(false)
 
+  const r = fiche?.reponses || {}
   if (!fiche || edition) {
     return (
       <Nouveau
@@ -39,17 +40,14 @@ export default function EspaceResponsable({ user, fiche, onChange, notifier }) {
           <dl>
             <dt>Secteur</dt><dd>{fiche.secteur}</dd>
             <dt>Localisation</dt><dd>{[fiche.quartier, fiche.ville].filter(Boolean).join(', ') || '—'}</dd>
-            <dt>Téléphone</dt><dd>{fiche.contact_tel || '—'}</dd>
-            <dt>Besoin en stagiaires</dt>
-            <dd>
-              {labelOf(BESOINS, fiche.besoin_stagiaires)}
-              {(fiche.filieres || []).length > 0 && fiche.besoin_stagiaires !== 'non' ? ` — ${fiche.filieres.join(', ')}` : ''}
-              {fiche.nombre_stagiaires ? ` (${fiche.nombre_stagiaires})` : ''}
-            </dd>
-            <dt>Services qui vous intéressent</dt><dd>{(fiche.services_proposes || []).join(' ; ') || 'Aucun'}</dd>
+            <dt>Postes à pourvoir recensés</dt><dd>{nbPostes(r)}</dd>
+            <dt>Recrutements prévus (12 mois)</dt><dd>{r.q25 || '—'}</dd>
+            <dt>Accueil de stagiaires</dt><dd>{r.q84 || '—'}</dd>
+            <dt>Filières ESTLC concernées</dt><dd>{(fiche.filieres || []).join(', ') || '—'}</dd>
           </dl>
         </section>
-        <button className="btn" onClick={() => setEdition(true)}>Modifier ma fiche</button>
+        <p className="muted petit">Vous pouvez compléter votre fiche à tout moment : toutes les rubriques non remplies peuvent encore être renseignées.</p>
+        <button className="btn" onClick={() => setEdition(true)}>Modifier / compléter ma fiche</button>
         <p className="muted petit centre" style={{ marginTop: 18 }}>
           <button className="lien" onClick={() => signOut().then(() => window.location.reload())}>Se déconnecter</button>
         </p>
